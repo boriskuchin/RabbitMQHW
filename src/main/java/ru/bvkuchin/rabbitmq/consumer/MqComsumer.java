@@ -14,33 +14,44 @@ public class MqComsumer {
 
     public static void main(String[] args) throws Exception {
 
-        if ((args.length != 2) || !args[0].equals("set_topic")) {
-            throw new RuntimeException("Incorrect set_topic command");
-        }
-
+        BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(System.in));
 
         connectionFactory = new ConnectionFactory();
         connectionFactory.setHost("localhost");
         connection = connectionFactory.newConnection();
-        channel = connection.createChannel();
-        channel.exchangeDeclare(EXCHANGE_NAME, BuiltinExchangeType.DIRECT);
 
 
+        while (true) {
+            String[] command = bufferedReader.readLine().split(" ");
 
-        String queueName = channel.queueDeclare().getQueue();
-        System.out.println("My queue name: " + queueName);
 
-        String topic = args[1];
+            if ((command.length == 1) && command[0].equals("unsubscribe")) {
+                if (channel.isOpen()) {
+                    channel.close();
+                    System.out.println("Unsubscribed");
+                }
+            }
 
-        channel.queueBind(queueName, EXCHANGE_NAME, topic);
+            if ((command.length == 2) && command[0].equals("set_topic")) {
 
-        System.out.println(" [*] Waiting for messages " + topic);
+                channel = connection.createChannel();
+                channel.exchangeDeclare(EXCHANGE_NAME, BuiltinExchangeType.DIRECT);
 
-        DeliverCallback deliverCallback = (consumerTag, delivery) -> {
-            String message = new String(delivery.getBody(), "UTF-8");
-            System.out.println(" [x] Received '" + message + "'");
-        };
+                String queueName = channel.queueDeclare().getQueue();
+                System.out.println("My queue name: " + queueName);
 
-        channel.basicConsume(queueName, true, deliverCallback, consumerTag -> { });
+                String topic = command[1];
+
+                channel.queueBind(queueName, EXCHANGE_NAME, topic);
+
+                System.out.println(" [*] Waiting for messages " + topic);
+
+                DeliverCallback deliverCallback = (consumerTag, delivery) -> {
+                    String message = new String(delivery.getBody(), "UTF-8");
+                    System.out.println(" [x] Received '" + message + "'");
+                };
+                channel.basicConsume(queueName, true, deliverCallback, consumerTag -> { });
+            }
+        }
     }
 }
